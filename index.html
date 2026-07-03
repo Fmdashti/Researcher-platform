@@ -1068,8 +1068,16 @@ async function loadRdfGoals(){
     const raw = res && res.value ? JSON.parse(res.value) : {};
     let migrated = false;
     Object.keys(raw).forEach(id=>{
-      if(!Array.isArray(raw[id])) return;
-      raw[id] = raw[id].map(entry=>{
+      // Normalize whatever shape this key holds into a clean array of
+      // {text, year} objects. Older/experimental versions of this app
+      // sometimes stored a single string or object instead of an array;
+      // without this, a single malformed entry would crash the whole page.
+      let list = raw[id];
+      if(!Array.isArray(list)){
+        list = list ? [list] : [];
+        migrated = true;
+      }
+      raw[id] = list.map(entry=>{
         if(entry && typeof entry === 'object' && 'text' in entry && 'year' in entry) return entry;
         migrated = true;
         return normalizeAchievement(entry);
@@ -1090,7 +1098,8 @@ function getAvailableYears(){
   const years = new Set();
   for(let y=currentYear()-1; y<=2050; y++) years.add(y);
   Object.values(rdfGoals).forEach(list=>{
-    (list||[]).forEach(entry=>{
+    const arr = Array.isArray(list) ? list : (list ? [list] : []);
+    arr.forEach(entry=>{
       const y = normalizeAchievement(entry).year;
       if(y) years.add(y);
     });
